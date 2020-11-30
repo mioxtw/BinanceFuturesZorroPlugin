@@ -79,8 +79,8 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
       
       ``` C++      
       brokerCommand(SET_TGTOKEN, "1234567890:AABBCCDDEEFFGGHH");
-		  brokerCommand(SET_TGCHATID, 123456789);
-		  brokerCommand(SET_COMMENT, "Telegrame Test");
+      brokerCommand(SET_TGCHATID, 123456789);
+      brokerCommand(SET_COMMENT, "Telegrame Test");
       ```
       
     * SET_USETESTNET (private API)
@@ -88,12 +88,19 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * SET_TRADEVOLINTERVAL (private API)
     
       ``` C++
-      #define SET_TRADEVOLINTERVAL   2004
       brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
       ```
     * POSTMESSAGE_TEST (private API)
     * RATELIMIT_TEST (private API)
-
+      * Private API need to define first      
+      ``` C++      
+      #define SET_TGTOKEN      2001 
+      #define SET_TGCHATID     2002
+      #define SET_USETESTNET   2003
+      #define SET_TRADEVOLINTERVAL   2004
+      #define POSTMESSAGE_TEST 3001
+      #define RATELIMIT_TEST   3002
+      ```
 
 ## TO-DO List
 
