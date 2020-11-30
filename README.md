@@ -114,7 +114,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
   * You can also sponsor me directly from USDT/BTC/ETH
     * My BTC Address: 
       * 3BYVUVfZJTUXWGKsjjucWKdScKTSJRw8Ck 
-    * My USDT/ETH Address: 
+    * My ERC20 USDT/ETH Address: 
       * 0x10C85D6AE5266E2Af2cFAA688B5348c4c7119062  
   * Thanks a lot
   
