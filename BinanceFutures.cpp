@@ -29,6 +29,23 @@ typedef double DATE;
 #define DLLFUNC extern "C" __declspec(dllexport)
 #define SAFE_RELEASE(p) if(p) p->release(); p = NULL
 
+
+#include <map>
+#include <vector>
+
+#include "binacpp.h"
+#include "binacpp_websocket.h"
+#include <json/json.h>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#define API_KEY 		"api key"
+#define SECRET_KEY		"user key"
+
+
+
+using namespace std;
+
 /////////////////////////////////////////////////////////////
 #pragma warning(disable : 4996 4244 4312)
 
@@ -81,10 +98,21 @@ static HWND g_hWindow = NULL;
 static char* g_TGToken;
 static long g_TGChatId;
 static bool g_useTestnet = false;
-static bool g_rateLimitTest = false;
-static bool g_postMessageTest = false;
 static int g_tradeVolumeInterval = 1;
 static char* g_orderComments;
+static long aggTradeId;
+map < std::string, map <double, double> >  depthCache;
+map < long, map <std::string, double> >  klinesCache;
+map < long, map <std::string, double> >  aggTradeCache;
+map < long, map <std::string, double> >  userTradeCache;
+map < std::string, map <std::string, double> >  userBalance;
+static thread WSRecive;
+static double g_Balance = -1;
+static double g_TradeVal = -1;
+static double g_MarginVal = -1;
+static bool g_enableSpotTicks = false;
+std::mutex mtx;
+std::atomic_bool flowing{ false };
 
 #define OBJECTS	300
 #define TOKENS		20+OBJECTS*32
@@ -106,7 +134,6 @@ void Log(char* Name, char *var) {
 	char msgbuf[1024];
 	sprintf(msgbuf, "%s: %s\n", Name, var);
 	OutputDebugStringA(msgbuf);
-	DEBUG("[DEBUG] ", msgbuf);
 }
 
 char* rheader(char* asset) {
@@ -116,8 +143,28 @@ char* rheader(char* asset) {
 		return (g_useTestnet) ? "https://testnet.binancefuture.com/dapi/" : "https://dapi.binance.com/dapi/";
 }
 
+std::string get_host(char* asset) {
+	if (!strcmp(asset, "") or strstr(asset, "USDT"))
+		return BINANCE_FUTURES_USDT_HOST;
+	else
+		return BINANCE_FUTURES_COIN_HOST;
+}
 
+std::string get_ws_host(char* asset) {
+	if (g_enableSpotTicks)
+		return BINANCE_SPOT_WS_HOST;
+	else if (!strcmp(asset, "") or strstr(asset, "USDT"))
+		return BINANCE_FUTURES_USDT_WS_HOST;
+	else
+		return BINANCE_FUTURES_COIN_WS_HOST;
+}
 
+int get_ws_port() {
+	if (g_enableSpotTicks)
+		return 9443;
+	else
+		return 443;
+}
 
 char* itoa(int n)
 {
@@ -133,6 +180,12 @@ char* i64toa(__int64 n)
 	return buffer;
 }
 
+char* ltoa(long n)
+{
+	static char buffer[64];
+	if (0 != _ltoa_s(n, buffer, 64, 10)) *buffer = 0;
+	return buffer;
+}
 
 int atoix(char* c) { return (int)(_atoi64(c)-g_IdOffs64); }
 
@@ -232,12 +285,6 @@ static int DoTok = 0;
 
 char* send(const char* dir, const char* param = NULL, int crypt = 0)
 {
-	if (g_rateLimitTest) {
-		counterPer1min++;
-		if (counterPer1min % 100 == 0)
-			Log("[RateLimitTest: send(): ", itoa(counterPer1min));
-	}
-
 	int id;
 	strcpy_s(g_Command,rheader(g_Asset));
 	strcat_s(g_Command,dir);
@@ -358,10 +405,182 @@ char* timeFrame(int interval) {
 
 	return tf;
 }
+
+
+
+int ws_aggTrade_OnData(Json::Value& json_result) {
+
+	//long timestamp = json_result["T"].asInt64();
+	aggTradeId = json_result["a"].asInt64();
+	aggTradeCache[aggTradeId]["p"] = atof(json_result["p"].asString().c_str());
+	aggTradeCache[aggTradeId]["q"] = atof(json_result["q"].asString().c_str());
+
+	//Log("ws_aggTrade_OnData(): [SET] Tick ID:", ltoa(aggTradeId));
+
+	//cout << "Mio0: aggTradeId: " << aggTradeId << endl;
+	//cout << "T:" << timestamp << ", ";
+	//printf("p: %.08f, ", aggTradeCache[timestamp]["p"]);
+	//printf("q: %.08f ", aggTradeCache[timestamp]["q"]);
+	//cout << " " << endl;
+	//print_aggTradeCache();
+	//Log("Mio: ws_aggTrade_OnData() ", ftoa(aggTradeCache[aggTradeId]["p"]));
+	PostMessage(g_hWindow, WM_APP + 1, 0, 0);
+	return 0;
+}
+
+void waitForAsset() {
+	while (1) {
+		if (!strcmp(g_Asset, ""))
+			sleep(20);
+		else
+			break;
+	}
+}
+
+void waitForAccount() {
+	while (1) {
+		if (!strcmp(g_Account, ""))
+			sleep(20);
+		else
+			break;
+	}
+}
+
+
+void print_userBalance_usdt() {
+
+	map < std::string, map<std::string, double> >::iterator it_i;
+
+	cout << "==================================" << endl;
+
+	for (it_i = userBalance.begin(); it_i != userBalance.end(); it_i++) {
+
+		std::string symbol = (*it_i).first;
+		map <std::string, double> balance = (*it_i).second;
+
+		//cout << "Symbol :" << symbol << ", ";
+		//printf("Wallet Balance   : %.08f, ", balance["wb"]);
+		//printf("Margin Balance(cross wallet balance): %.08f ", balance["cw"]);
+		//cout << " " << endl;
+
+	}
+
+}
+
+//---------------
+int ws_userStream_OnData_USDT(Json::Value& json_result) {
+	//Log("Mio: ws_userStream_OnData_USDT()","\n");
+
+
+	int i;
+	std::string action = json_result["e"].asString();
+	if (action == "ORDER_TRADE_UPDATE") {
+
+		std::string executionType = json_result["o"]["x"].asString();
+		std::string orderStatus = json_result["o"]["X"].asString();
+		std::string symbol = json_result["o"]["s"].asString();
+		std::string side = json_result["o"]["S"].asString();
+		std::string orderType = json_result["o"]["o"].asString();
+		std::string orderId = json_result["o"]["i"].asString();
+		std::string price = json_result["o"]["p"].asString();
+		std::string averagePrice = json_result["o"]["ap"].asString();
+		std::string qty = json_result["o"]["q"].asString();
+		std::string FillQty = json_result["o"]["z"].asString();
+
+		//if (executionType == "NEW") {
+		//	printf("\n\n%s %s %s %s(%s) %s %s\n\n", symbol.c_str(), side.c_str(), orderType.c_str(), orderId.c_str(), orderStatus.c_str(), price.c_str(), qty.c_str());
+		//	return 0;
+		//}
+		//printf("\n\n%s %s %s %s %s\n\n", symbol.c_str(), side.c_str(), executionType.c_str(), orderType.c_str(), orderId.c_str());
+
+
+	}
+	else if (action == "ACCOUNT_UPDATE") {
+		cout << json_result["a"]["B"].size() << endl;
+		// Update user balance
+		double tradeVal = 0;
+		double marginVal = 0;
+		for (i = 0; i < json_result["a"]["B"].size(); i++) {
+
+			std::string account = json_result["a"]["B"][i]["a"].asString();
+			userBalance[account]["wb"] = atof(json_result["a"]["B"][i]["wb"].asString().c_str());
+			userBalance[account]["cw"] = atof(json_result["a"]["B"][i]["cw"].asString().c_str());
+
+		}
+		for (i = 0; i < json_result["a"]["P"].size(); i++) {
+
+			std::string side = json_result["a"]["P"][i]["ps"].asString();
+			if (hedge) {
+				if (side == "BOTH") {
+					continue;
+				}
+			}
+			else {
+				if (side == "LONG" || side == "SHORT") {
+					continue;
+				}
+			}
+
+			tradeVal += atof(json_result["a"]["P"][i]["up"].asString().c_str());
+
+		}
+
+
+
+		g_Balance = userBalance[g_Account]["wb"];
+		g_TradeVal = tradeVal;
+
+
+		//print_userBalance_usdt();
+
+	}
+	return 0;
+}
+
+
+void ws_ticks() {
+
+	std::string api_key(g_Password);
+	std::string secret_key(g_Secret);
+	BinaCPP::init(api_key, secret_key);
+
+
+
+	//waitForAccount();
+	waitForAsset();
+
+	if (mtx.try_lock()) {
+		hedge = BinaCPP::get_dualSidePosition(get_host(g_Asset));
+		mtx.unlock();
+	}
+
+	//Json::Value result;
+	//BinaCPP::start_userDataStream(result);
+	//std::string ws_path = std::string("/ws/");
+	//ws_path.append(result["listenKey"].asString());
+
+	
+
+	char msgbuf[256];
+	sprintf(msgbuf, "/ws/%s@aggTrade", strlwr(g_Asset));
+	//sprintf(msgbuf, "/ws/ethusdt@aggTrade");
+	Log("Mio: ws_ticks", msgbuf);
+
+
+	flowing = true;
+
+	BinaCPP_websocket::init();
+	//BinaCPP_websocket::connect_endpoint(get_ws_host(g_Asset), get_ws_port(), ws_userStream_OnData_USDT, ws_path.c_str());
+	BinaCPP_websocket::connect_endpoint(get_ws_host(g_Asset), get_ws_port(), ws_aggTrade_OnData, msgbuf);
+	BinaCPP_websocket::enter_event_loop(flowing);
+}
+
+
 ////////////////////////////////////////////////////////////////
 
 DLLFUNC int BrokerOpen(char* Name,FARPROC fpError,FARPROC fpProgress)
 {
+	Log("[DEBUG] ", "BrokerOpen()");
 	if(*Name == '4') {
 		g_bDemoOnly = FALSE;
 	} else {
@@ -392,9 +611,10 @@ DLLFUNC int BrokerTime(DATE *pTimeGMT)
 }
 
 
-DLLFUNC int BrokerAccount(char* Account,double *pdBalance,double *pdTradeVal,double *pdMarginVal)
+DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, double* pdMarginVal)
 {
-	if(!isConnected(1)) return 0;
+	//Log("[DEBUG] ", "BrokerAccount()");
+	if (!isConnected(1)) return 0;
 	if (!Account || !*Account) {
 		if (!strcmp(g_Asset, "") or strstr(g_Asset, "USDT"))
 			Account = "USDT";
@@ -426,88 +646,102 @@ DLLFUNC int BrokerAccount(char* Account,double *pdBalance,double *pdTradeVal,dou
 			Account = "XRP";
 	}
 
-	if (g_rateLimitTest)
-	    countBrokerAccount++;
 
-	//weight=5
-	char* Response = (!strcmp(Account,"USDT")) ? send("v2/account",0,1) : send("v1/account",0,1);
-	if(!Response) return 0;
+	strcpy_s(g_Account, Account); // for BrokerAccount
+
+	//weight=1
+	char* Response = (!strcmp(Account, "USDT")) ? send("v2/balance", 0, 1) : send("v1/balance", 0, 1);
+	if (!Response) return 0;
 	parse(Response);
 	double Balance = 0;
 	double TradeVal = 0;
 	double MarginVal = 0;
 
-	while(1) {
-		char* Found = parse(NULL,"asset");
-		if(!Found || !*Found) break;
+	while (1) {
+		char* Found = parse(NULL, "asset");
+		if (!Found || !*Found) break;
 		if (!strcmp(Found, Account)) {
-			Balance = atof(parse(NULL, "walletBalance")); //  錢包餘額 = balance
-			TradeVal = atof(parse(NULL, "unrealizedProfit")); // 未實現盈虧 = equity - balance = P&L
-			MarginVal = atof(parse(NULL, "maintMargin")); // 維持保證金 = margin
+			Balance = atof(parse(NULL, "balance")); //  錢包餘額 = balance
+			TradeVal = atof(parse(NULL, "crossUnPnL")); // 未實現盈虧 = equity - balance = P&L
+			MarginVal = Balance - (atof(parse(NULL, "availableBalance")) - TradeVal); // 維持保證金 = margin
 		}
 	}
-	
-	if(pdBalance) *pdBalance = Balance;
-	if(pdTradeVal) *pdTradeVal = TradeVal;
-	if(pdMarginVal) *pdMarginVal = MarginVal;
+
+	if (pdBalance) *pdBalance = Balance;
+	if (pdTradeVal) *pdTradeVal = TradeVal;
+	if (pdMarginVal) *pdMarginVal = MarginVal;
 
 
-	//weight=1
-	//hedge or NFA
-	char* Response2 = send("v1/positionSide/dual", 0, 1);
-	if (!Response2) return 0;
-	parse(Response2);
-	while (1) {
-		char* Found = parse(NULL, "dualSidePosition");
-		if (!Found || !*Found) break;
-		if (!strcmp(Found, "true"))
-			hedge = true;
-		else if (!strcmp(Found, "false"))
-			hedge = false;
-	}
+	return Balance > 0. ? 1 : 0;
 
-	return Balance > 0.? 1 : 0;
 }
-
-
 
 
 DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 	double *pVolume, double *pPip, double *pPipCost, double *pMinAmount,
 	double *pMarginCost, double *pRollLong, double *pRollShort)
 {
+	//Log("Mio: ", "BrokerAsset()");
 	if(!isConnected()) return 0;
-
-	if (g_postMessageTest)
-	    Log("[PostMessageTest] ", "BrokerAsset()");
 
 	strcpy_s(g_Asset, fixAsset(Asset)); // for BrokerAsset
 
-	
-	//auto start_time = std::chrono::high_resolution_clock::now();
-	if (g_rateLimitTest)
-	    countBrokerAsset++;
-	//weight=1
-	//char* Result = send("v1/ticker/bookTicker?symbol=", fixAsset(Asset), 0);
-	char* Result = send("v1/ticker/price?symbol=", fixAsset(Asset), 0);
-	//auto end_time = std::chrono::high_resolution_clock::now();
-	//auto time = end_time - start_time;
-	//Log("Wait: ", i64toa(std::chrono::duration_cast<std::chrono::milliseconds>(time).count()));
+	if (WSRecive.joinable() && aggTradeCache[aggTradeId]["p"] != 0.0) {
+		//Log("BrokerAsset(): [GET] Tick ID:", ltoa(aggTradeId));
+	    if (pPrice) *pPrice = aggTradeCache[aggTradeId]["p"];
+	}
+	else {
+
+		//auto start_time = std::chrono::high_resolution_clock::now();
+		//auto end_time = std::chrono::high_resolution_clock::now();
+		//auto time = end_time - start_time;
+		//Log("Wait: ", i64toa(std::chrono::duration_cast<std::chrono::milliseconds>(time).count()));
+
+		if (pPrice) {
+			if (g_enableSpotTicks) {
+				if (mtx.try_lock()) {
+					std::string host(BINANCE_SPOT_HOST);
+					*pPrice = BinaCPP::get_price(host, g_Asset);
+					mtx.unlock();
+				}
+			}
+			else {
+				if (mtx.try_lock()) {
+					*pPrice = BinaCPP::get_price(get_host(g_Asset), g_Asset);
+					mtx.unlock();
+				}
+		    }
+		}
 
 
-	if (!Result || !*Result) return 0;
-	if (!parse(Result)) return 0;
-	double price = atof(parse(Result, "price"));
-	if (price == 0.) return 0;
-	if (pPrice) *pPrice = price;
+	}
 
 	if (pVolume) {
+		char* tf = timeFrame(g_tradeVolumeInterval);
+		if (g_enableSpotTicks) {
+			if (mtx.try_lock()) {
+				std::string host(BINANCE_SPOT_HOST);
+				*pVolume = BinaCPP::get_volume(host, g_Asset, tf);
+				mtx.unlock();
+			}
+		}
+		else {
+			if (mtx.try_lock()) {
+				*pVolume = BinaCPP::get_volume(get_host(g_Asset), g_Asset, tf);
+				mtx.unlock();
+			}
+		}
+
+		Log("Mio: volume: ", ftoa(*pVolume));
+	}
 
 
+#if 0
+	if (pVolume) {
 		char* tf = timeFrame(g_tradeVolumeInterval);
 
 		char Command[256] = "?symbol=";
-		strcat_s(Command, fixAsset(Asset, 0));
+		strcat_s(Command, g_Asset);
 		strcat_s(Command, "&interval=");
 		strcat_s(Command, tf);
 		strcat_s(Command, "&limit=2");
@@ -539,18 +773,9 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 		else if (Time * 1000 > TimeClose[0] && Time * 1000 > TimeClose[1]) {
 			*pVolume = Volume[1];
 		}
-
-		if (g_rateLimitTest) {
-			Log("[RateLimitTest] send(): ", itoa(counterPer1min));
-			Log("[RateLimitTest] BrokerAccount(): ", itoa(countBrokerAccount));
-			Log("[RateLimitTest] BrokerAsset(): ", itoa(countBrokerAsset));
-			Log("[RateLimitTest] BrokerTrade(): ", itoa(countBrokerTrade));
-			counterPer1min = 0;
-			countBrokerAccount = 0;
-			countBrokerAsset = 0;
-			countBrokerTrade = 0;
-		}
 	}
+#endif
+
 	return 1;
 }	
 
@@ -664,10 +889,6 @@ DLLFUNC int BrokerTrade(int nTradeID,double *pOpen,double *pClose,double *pRoll,
 	strcat_s(Param,g_Asset);
 	strcat_s(Param,"&origClientOrderId=");
 	strcat_s(Param,itoa(nTradeID));
-
-
-	if (g_rateLimitTest)
-	    countBrokerTrade++;
 
 	//weight=1
 	char* Result = send("v1/order",Param,1);
@@ -1039,6 +1260,7 @@ DLLFUNC int BrokerSell2(int nTradeID, int nAmount, double Limit, double *pClose,
 DLLFUNC int BrokerLogin(char* User,char* Pwd,char* Type,char* Account)
 {
 	if(User) {
+		Log("[DEBUG] ", "BrokerLogin() In");
 		if(g_bDemoOnly) {
 			showError("Need Zorro S for Binance","");
 			return 0;
@@ -1052,12 +1274,26 @@ DLLFUNC int BrokerLogin(char* User,char* Pwd,char* Type,char* Account)
 		g_Id = (int)Time;
 		if(!*User || !*Pwd) {
 			showError("Price data only","");
-		} else 
+		}
+		else {
 			/*if(!BrokerAccount(Account,NULL,NULL,NULL))
 			return 0;*/
+		}
+
+		if (!WSRecive.joinable()) {
+			//Log("Mio: not joinable", g_Asset);
+			WSRecive = thread(&ws_ticks);
+		}
+
 
 		return 1;
 	} else {
+		Log("[DEBUG] ", "BrokerLogin() Out");
+		if (WSRecive.joinable()) {
+			flowing = false;
+			WSRecive.join();
+		}
+
 		if (g_HttpId)
 			http_free(g_HttpId);
 		g_HttpId = 0;
@@ -1075,11 +1311,11 @@ DLLFUNC double BrokerCommand(int command,DWORD parameter)
 		case GET_DELAY: return loop_ms;
 		case SET_WAIT: wait_ms = parameter;
 		case GET_WAIT: return wait_ms;
-		case GET_COMPLIANCE: return 2; //可以改
+		case GET_COMPLIANCE: return 2; 
 		case SET_DIAGNOSTICS: g_nDiag = parameter; return 1;
 		//case SET_LIMIT: g_Limit = *(double*)parameter; return 1; 
 		case SET_AMOUNT: g_Amount = *(double*)parameter; return 1; //LotAmount
-		case GET_MAXREQUESTS: return 1;
+		case GET_MAXREQUESTS: return 0;
 		case GET_MAXTICKS: return 5256000; //1440*365*10  10 years
 		case SET_ORDERTYPE: 
 			return g_OrderType = parameter;
@@ -1159,18 +1395,15 @@ DLLFUNC double BrokerCommand(int command,DWORD parameter)
 		case SET_HWND: g_hWindow = (HWND)parameter; return 1;
 		case SET_TGTOKEN: g_TGToken = (char *)parameter; return 1; 
 		case SET_TGCHATID: g_TGChatId = (long)parameter; return 1;
-		case SET_USETESTNET: g_useTestnet = (bool)parameter; return 1;
-		case POSTMESSAGE_TEST:{
-			if (g_hWindow) {
-				Log("Mio: PostMessage() test: ", g_Asset);
-				g_postMessageTest = true;
-				PostMessage(g_hWindow, WM_APP + 1, 0, 0);
-			}
-			return 1;
-		}
-		case RATELIMIT_TEST: g_rateLimitTest = (bool)parameter; return 1;
+		case ENABLE_USETESTNET: g_useTestnet = true; return 1;
 		case SET_TRADEVOLINTERVAL: g_tradeVolumeInterval = (int)parameter; return 1;
 		case SET_COMMENT: g_orderComments = (char *)parameter; return 1;
+		case ENABLE_SPOTTICKS: {
+			Log("Mio: ","ENABLE_SPOTTICKS");
+			g_enableSpotTicks = true;
+			return 1;
+		}
+		
 	}
 
 	return 0.;

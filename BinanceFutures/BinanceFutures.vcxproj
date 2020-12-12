@@ -21,20 +21,33 @@
   <ItemGroup>
     <ClInclude Include="..\base64.h" />
     <ClInclude Include="..\cJSON.h" />
+    <ClInclude Include="..\include\binacpp.h" />
+    <ClInclude Include="..\include\binacpp_logger.h" />
+    <ClInclude Include="..\include\binacpp_utils.h" />
+    <ClInclude Include="..\include\binacpp_websocket.h" />
     <ClInclude Include="..\jsmn.h" />
     <ClInclude Include="..\sha256.h" />
     <ClInclude Include="..\source.h" />
     <ClInclude Include="..\stdafx.h" />
     <ClInclude Include="..\trading.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\base64.cpp" />
+    <ClCompile Include="..\binacpp.cpp" />
+    <ClCompile Include="..\binacpp_logger.cpp" />
+    <ClCompile Include="..\binacpp_utils.cpp" />
+    <ClCompile Include="..\binacpp_websocket.cpp" />
     <ClCompile Include="..\BinanceFutures.cpp" />
     <ClCompile Include="..\cJSON.c" />
     <ClCompile Include="..\jsmn.cpp" />
+    <ClCompile Include="..\jsoncpp.cpp" />
     <ClCompile Include="..\sha256.cpp" />
     <ClCompile Include="..\source.cpp" />
     <ClCompile Include="..\stdafx.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="BinanceFutures.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{4FCE34E2-BCE7-4225-9D06-1A3AA1B78070}</ProjectGuid>
@@ -89,16 +102,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\OpenSSL-Win32\include;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\OpenSSL-Win32\lib;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\OpenSSL-Win32\include;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;C:\OpenSSL-Win32\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -115,7 +128,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurl.lib;ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;websockets_static.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
