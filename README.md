@@ -82,16 +82,16 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
       brokerCommand(SET_COMMENT, "Telegrame Test");
       ```
       
-    * SET_USETESTNET (private API)
+    * ENABLE_TESTNET (private API)
       * Enable testnet for Binance Futures
     * SET_TRADEVOLINTERVAL (private API)
       * Private API need to define first      
       ``` C++      
-      #define SET_TGTOKEN      2001 
-      #define SET_TGCHATID     2002
-      #define SET_USETESTNET   2003
+      #define SET_TGTOKEN            2001 
+      #define SET_TGCHATID           2002
+      #define ENABLE_TESTNET         2003
       #define SET_TRADEVOLINTERVAL   2004
-      #define ENABLE_SPOTTICKS 2005
+      #define ENABLE_SPOTTICKS       2005
       
       brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
       ```
