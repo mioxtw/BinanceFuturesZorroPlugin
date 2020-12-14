@@ -39,7 +39,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * If you forget to fill account value in accounts.csv, it uses Asset to know what account balance.
   * BrokerAsset
     * Only Support traded price and traded volume.
-    * Add websocket streaming support to lower number of API requests and support high resolution ticks.
+    * Add websocket streaming support to lower number of API requests and support high resolution ticks.(Thanks for AndrewAMD's help)
     * Traded volume use 1 minute timeframe defaultly. So it needs to set BarPeriod from BrokerCommand.
       ``` C++
       #define SET_TRADEVOLINTERVAL   2004
