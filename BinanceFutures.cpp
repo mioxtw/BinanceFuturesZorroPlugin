@@ -1472,8 +1472,8 @@ DLLFUNC double BrokerCommand(int command,DWORD parameter)
 		case ENABLE_USETESTNET: g_useTestnet = true; return 1;
 		case SET_TRADEVOLINTERVAL: g_tradeVolumeInterval = (int)parameter; return 1;
 		case SET_COMMENT: g_orderComments = (char *)parameter; return 1;
-		case ENABLE_SPOTTICKS: {
-			Log("Mio: ","ENABLE_SPOTTICKS");
+		case ENABLE_SPOTPRICE: {
+			Log("Mio: ","ENABLE_SPOTPRICE");
 			g_enableSpotTicks = true;
 			return 1;
 		}
