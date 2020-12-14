@@ -39,6 +39,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * If you forget to fill account value in accounts.csv, it uses Asset to know what account balance.
   * BrokerAsset
     * Only Support traded price and traded volume.
+    * Add websocket streaming support to lower number of API requests and support high resolution ticks.
     * Traded volume use 1 minute timeframe defaultly. So it needs to set BarPeriod from BrokerCommand.
       ``` C++
       #define SET_TRADEVOLINTERVAL   2004
@@ -59,8 +60,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * SET_AMOUNT
     * GET_MAXTICKS
     * GET_MAXREQUESTS
-      * always return 1 for the moment, because ratelimit is 2400/min, but actually I measure it for a smaller value. 
-      * I will implement websocket instead of request price/volume, and this command will be removed in the future.   
+      * always return 0 for no limit.
     * GET_POSITION
       * return Balance
     * SET_SYMBOL
@@ -68,7 +68,6 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * GET_BROKERZONE
     * DO_CANCEL
     * SET_HWND
-      * I will implement websocket and trigger BrokerAsset to get ticks in the future.
     * SET_COMMENT
       * Currently I use it to set telegram's commends.
     
@@ -83,28 +82,24 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
       brokerCommand(SET_COMMENT, "Telegrame Test");
       ```
       
-    * SET_USETESTNET (private API)
+    * ENABLE_TESTNET (private API)
       * Enable testnet for Binance Futures
     * SET_TRADEVOLINTERVAL (private API)
-    
-      ``` C++
-      brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
-      ```
-    * POSTMESSAGE_TEST (private API)
-    * RATELIMIT_TEST (private API)
       * Private API need to define first      
       ``` C++      
-      #define SET_TGTOKEN      2001 
-      #define SET_TGCHATID     2002
-      #define SET_USETESTNET   2003
+      #define SET_TGTOKEN            2001 
+      #define SET_TGCHATID           2002
+      #define ENABLE_TESTNET         2003
       #define SET_TRADEVOLINTERVAL   2004
-      #define POSTMESSAGE_TEST 3001
-      #define RATELIMIT_TEST   3002
+      #define ENABLE_SPOTPRICE       2005
+      
+      brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
       ```
+    * ENABLE_SPOTPRICE (private API)
+      * Enable Binance SPOT price ticks, volume, and history downlowwding instead of Binance Futures
+      * Currenly it only supports for Binance Futures USDT
 
 ## TO-DO List
-
-  * Add websocket streaming support to lower number of API requests and support high resolution ticks.
   * Please report bugs to fix.
   
 ## Sponsor
