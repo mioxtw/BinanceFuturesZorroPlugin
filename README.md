@@ -4,7 +4,7 @@
 
 ## Install
 
-To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.1.0/BinanceFuturesPlugin_v0.1.0.zip) and place the BinanceFutures.dll file into the **Plugin** folder under Zorro's root path.
+To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.2.0/BinanceFuturesPlugin_v0.2.0.zip) and place **BinanceFutures.dll** and **cacert.pem** into the **Plugin** folder under Zorro's root path.
 
 ## How to Use
 * First generate a API Key in Binance website.
@@ -96,8 +96,11 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
       brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
       ```
     * ENABLE_SPOTPRICE (private API)
-      * Enable Binance SPOT price ticks, volume, and history downlowwding instead of Binance Futures
+      * Enable Binance SPOT price ticks, volume, and history downloading instead of Binance Futures
       * Currenly it only supports for Binance Futures USDT
+      ``` C++  
+      brokerCommand(ENABLE_SPOTPRICE, 1);
+      ```
 
 ## TO-DO List
   * Please report bugs to fix.
@@ -106,7 +109,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
 
   * You can register new Binance Futures account from [my link](https://www.binance.com/en/futures/ref/38145944
 ), and then you can get 10% refund from your commission.
-  * You can also sponsor me directly from USDT/BTC/ETH
+  * You can also donate USDT/BTC/ETH to sponsor me directly.
     * My BTC Address: 
       * 3BYVUVfZJTUXWGKsjjucWKdScKTSJRw8Ck 
     * My ERC20 USDT/ETH Address: 
