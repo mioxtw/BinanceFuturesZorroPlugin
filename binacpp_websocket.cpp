@@ -84,7 +84,7 @@ BinaCPP_websocket::init( )
 	info.gid = -1;
 	info.uid = -1;
 	info.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
-	info.ssl_ca_filepath = "cacert.pem";
+	info.ssl_ca_filepath = "./Plugin/cacert.pem";
 
 	context = lws_create_context( &info );
 }
