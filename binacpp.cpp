@@ -119,7 +119,7 @@ BinaCPP::get_serverTime(string& binanceHost, Json::Value &json_result)
 	GET /api/v1/ticker/allPrices
 */
 void 
-BinaCPP::get_allPrices(string& binanceHost, Json::Value &json_result, const char* symbol)
+BinaCPP::get_allPrices(string& binanceHost, Json::Value &json_result, const char* symbol=NULL)
 {	
 
 	BinaCPP_logger::write_log( "<BinaCPP::get_allPrices>" ) ;
@@ -312,7 +312,7 @@ bool BinaCPP::get_dualSidePosition(string &binanceHost) {
 */
 
 void 
-BinaCPP::get_allBookTickers(string& binanceHost, Json::Value &json_result , const char* symbol)
+BinaCPP::get_allBookTickers(string& binanceHost, Json::Value &json_result , const char* symbol=NULL)
 {	
 
 	BinaCPP_logger::write_log( "<BinaCPP::get_allBookTickers>" ) ;

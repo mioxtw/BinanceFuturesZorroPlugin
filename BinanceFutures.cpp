@@ -283,10 +283,14 @@ const char* getSignature(std::string Post)
 
 static int DoTok = 0;
 
-char* send(const char* dir, const char* param = NULL, int crypt = 0)
+char* send(const char* dir, const char* param = NULL, int crypt = 0, const char* host=NULL)
 {
 	int id;
-	strcpy_s(g_Command,rheader(g_Asset));
+	if (host)
+		strcpy_s(g_Command, host);
+	else
+		strcpy_s(g_Command,rheader(g_Asset));
+
 	strcat_s(g_Command,dir);
 	if(crypt) {
 		int CmdLength = (int)strlen(g_Command);
@@ -816,7 +820,70 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 	int allTicks = 0;
 	int count = 0;
 
+#if 0
+	while (TTStart < TTEnd) {
 
+		Json::Value result;
+
+		if (g_enableSpotTicks) {
+			if (mtx.try_lock()) {
+				std::string host(BINANCE_SPOT_HOST);
+				BinaCPP::get_klines(host, Asset, tf, nTicks, TTStart, TTEnd, result);
+				mtx.unlock();
+			}
+		}
+		else {
+			if (mtx.try_lock()) {
+				BinaCPP::get_klines(get_host(Asset), Asset, tf, nTicks, TTStart, TTEnd, result);
+				mtx.unlock();
+			}
+		}
+
+		int i = 0;
+		for (; i < result.size(); i++, ticks++) {
+			__int64 TimeOpen, TimeClose;
+			float QuoteVolume;
+			int NumberOfTrades;
+			float TakerbuyVolume;
+			float TakerbuyQuoteVolume;
+
+			TimeOpen = result[i][0].asInt64();
+			ticks->fOpen = result[i][1].asFloat();
+			ticks->fHigh = result[i][2].asFloat();
+			ticks->fLow = result[i][3].asFloat();
+			ticks->fClose = result[i][4].asFloat();
+			ticks->fVol = result[i][5].asFloat();
+			ticks->fVol = result[i][6].asFloat();
+			TimeClose = result[i][7].asInt64();
+			QuoteVolume = result[i][8].asFloat();
+			NumberOfTrades = result[i][9].asInt();
+			ticks->fVal = result[i][10].asFloat();
+			TakerbuyQuoteVolume = result[i][10].asFloat();
+
+			ticks->time = convertTime(TimeClose);
+
+			if (i == 0 && TimeOpen > TTStart) { //startTime沒data，中間有data
+				TTStart = TimeOpen;
+			}
+		}
+
+		if (i == 0) goto raus; //no data
+
+		allTicks += i;
+		TTStart += 1000LL * 60LL * nTickMinutes * i; //下載i個bar經過多少ms
+
+		//int allTicksPre = (TTEnd - TTStart) / 1000LL / 60LL / nTickMinutes;
+
+		SYSTEMTIME systime = { 0 };
+		VariantTimeToSystemTime(convertTime(TTStart), &systime);
+
+		sprintf(msgbuf, "[%d] allTicks:%s, Next: %04u/%02u/%02u %02d:%02d:%02d\n", count++, itoa(allTicks), systime.wYear, systime.wMonth, systime.wDay, systime.wHour, systime.wMinute, systime.wSecond);
+		OutputDebugStringA(msgbuf);
+		DEBUG("[DEBUG]", msgbuf);
+	}
+#endif
+
+#if 1
 	while (TTStart < TTEnd) {
 		char Command[256] = "?symbol=";
 		strcat_s(Command, fixAsset(Asset, 0));
@@ -829,8 +896,14 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 		strcat_s(Command, "&endTime=");
 		strcat_s(Command, i64toa(TTEnd));
 
+		char* Result;
 		//weight=1
-		char* Result = send("v1/klines", Command, 0);
+		if (g_enableSpotTicks)
+			Result = send("v3/klines", Command, 0, "https://api.binance.com/api/");
+		else
+			Result = send("v1/klines", Command, 0);
+
+
 		if (!Result || !*Result) goto raus;
 		Result = strchr(Result, '[');
 		if (!Result || !*Result) goto raus;
@@ -866,8 +939,9 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 		sprintf(msgbuf, "[%d] allTicks:%s, Next: %04u/%02u/%02u %02d:%02d:%02d\n", count++, itoa(allTicks), systime.wYear, systime.wMonth, systime.wDay, systime.wHour, systime.wMinute, systime.wSecond);
 		OutputDebugStringA(msgbuf);
 		DEBUG("[DEBUG]",msgbuf);
-		//sleep(25); //fapi ratelimits: 2400/1m = 25ms
 	}
+
+#endif
 
 	DEBUG("[DEBUG] Mio Get allTicks:", itoa(allTicks));
 
