@@ -109,7 +109,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
 
   * You can register new Binance Futures account from [my link](https://www.binance.com/en/futures/ref/38145944
 ), and then you can get 10% refund from your commission.
-  * You can also sponsor me directly from USDT/BTC/ETH
+  * You can also donate USDT/BTC/ETH to sponsor me directly.
     * My BTC Address: 
       * 3BYVUVfZJTUXWGKsjjucWKdScKTSJRw8Ck 
     * My ERC20 USDT/ETH Address: 
