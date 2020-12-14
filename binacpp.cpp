@@ -247,13 +247,13 @@ bool BinaCPP::get_dualSidePosition(string &binanceHost) {
 	if (binanceHost == BINANCE_SPOT_HOST)
 		return false;
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/positionSide/dual";
+		url += "/dapi/v1/positionSide/dual?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v1/positionSide/dual";
+		url += "/fapi/v1/positionSide/dual?";
 
 
 	string action = "GET";
-	string querystring("?timestamp=");
+	string querystring("timestamp=");
 	querystring.append(to_string(get_current_ms_epoch()));
 
 	querystring.append("&recvWindow=");
@@ -672,18 +672,18 @@ BinaCPP::get_account(string& binanceHost, Json::Value &json_result )
 
 	string url(binanceHost);
 	if (binanceHost == BINANCE_SPOT_HOST)
-		url += "/api/v3/account";
+		url += "/api/v3/account?";
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/account";
+		url += "/dapi/v1/account?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v2/account";
+		url += "/fapi/v2/account?";
 
 
 	string action = "GET";
 
 
 
-	string querystring("?timestamp=");
+	string querystring("timestamp=");
 	querystring.append( to_string( get_current_ms_epoch() ) );
 
 	querystring.append("&recvWindow=");
@@ -767,13 +767,13 @@ BinaCPP::get_myTrades(
 
 	string url(binanceHost);
 	if (binanceHost == BINANCE_SPOT_HOST)
-		url += "/api/v3/myTrades";
+		url += "/api/v3/myTrades?";
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/userTrades";
+		url += "/dapi/v1/userTrades?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v1/userTrades";
+		url += "/fapi/v1/userTrades?";
 
-	string querystring("?symbol=");
+	string querystring("symbol=");
 	querystring.append( symbol );
 
 	if ( limit > 0 ) {
@@ -871,13 +871,13 @@ BinaCPP::get_openOrders(
 
 	string url(binanceHost);
 	if (binanceHost == BINANCE_SPOT_HOST)
-		url += "/api/v3/openOrders";
+		url += "/api/v3/openOrders?";
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/openOrders";
+		url += "/dapi/v1/openOrders?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v1/openOrders";
+		url += "/fapi/v1/openOrders?";
 
-	string querystring("?symbol=");
+	string querystring("symbol=");
 	querystring.append( symbol );
 
 	querystring.append("&recvWindow=");
@@ -978,14 +978,14 @@ BinaCPP::get_allOrders(
 
 	string url(binanceHost);
 	if (binanceHost == BINANCE_SPOT_HOST)
-		url += "/api/v3/allOrders";
+		url += "/api/v3/allOrders?";
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/allOrders";
+		url += "/dapi/v1/allOrders?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v1/allOrders";
+		url += "/fapi/v1/allOrders?";
 
 
-	string querystring("?symbol=");
+	string querystring("symbol=");
 	querystring.append( symbol );
 
 	if ( orderId > 0 ) {
@@ -1205,17 +1205,17 @@ BinaCPP::get_order(
 
 	string url(binanceHost);
 	if (binanceHost == BINANCE_SPOT_HOST)
-		url += "/api/v3/order";
+		url += "/api/v3/order?";
 	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
-		url += "/dapi/v1/order";
+		url += "/dapi/v1/order?";
 	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
-		url += "/fapi/v1/order";
+		url += "/fapi/v1/order?";
 
 
 	string action = "GET";
 	
 
-	string querystring("?symbol=");
+	string querystring("symbol=");
 	querystring.append( symbol );
 	
 	if ( orderId > 0 ) {

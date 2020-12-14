@@ -1469,7 +1469,7 @@ DLLFUNC double BrokerCommand(int command,DWORD parameter)
 		case SET_HWND: g_hWindow = (HWND)parameter; return 1;
 		case SET_TGTOKEN: g_TGToken = (char *)parameter; return 1; 
 		case SET_TGCHATID: g_TGChatId = (long)parameter; return 1;
-		case ENABLE_USETESTNET: g_useTestnet = true; return 1;
+		case ENABLE_TESTNET: g_useTestnet = true; return 1;
 		case SET_TRADEVOLINTERVAL: g_tradeVolumeInterval = (int)parameter; return 1;
 		case SET_COMMENT: g_orderComments = (char *)parameter; return 1;
 		case ENABLE_SPOTPRICE: {
