@@ -811,7 +811,7 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 	OutputDebugStringA(msgbuf);
 	DEBUG("[DEBUG] End:", msgbuf);
 
-	nTicks = 1000; //1000 bars limit per request
+	nTicks = g_enableSpotTicks ? 500 : 1000; //limit per request
     sprintf(msgbuf, "nTicks: %s\n", itoa(nTicks));
 	OutputDebugStringA(msgbuf);
 
@@ -889,7 +889,7 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 		strcat_s(Command, fixAsset(Asset, 0));
 		strcat_s(Command, "&interval=");
 		strcat_s(Command, tf);
-		strcat_s(Command, "&limit=");   //Àq?­È:500 ³Ì¤j­È:1500.
+		strcat_s(Command, "&limit=");
 		strcat_s(Command, itoa(nTicks));
 		strcat_s(Command, "&startTime=");
 		strcat_s(Command, i64toa(TTStart));
