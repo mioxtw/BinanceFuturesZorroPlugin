@@ -37,7 +37,6 @@ typedef double DATE;
 #include "binacpp_websocket.h"
 #include <json/json.h>
 #include <thread>
-#include <atomic>
 #include <mutex>
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
@@ -112,7 +111,6 @@ static double g_TradeVal = -1;
 static double g_MarginVal = -1;
 static bool g_enableSpotTicks = false;
 std::mutex mtx;
-std::atomic_bool flowing{ false };
 
 #define OBJECTS	300
 #define TOKENS		20+OBJECTS*32
@@ -570,13 +568,10 @@ void ws_ticks() {
 	//sprintf(msgbuf, "/ws/ethusdt@aggTrade");
 	Log("Mio: ws_ticks", msgbuf);
 
-
-	flowing = true;
-
 	BinaCPP_websocket::init();
 	//BinaCPP_websocket::connect_endpoint(get_ws_host(g_Asset), get_ws_port(), ws_userStream_OnData_USDT, ws_path.c_str());
 	BinaCPP_websocket::connect_endpoint(get_ws_host(g_Asset), get_ws_port(), ws_aggTrade_OnData, msgbuf);
-	BinaCPP_websocket::enter_event_loop(flowing);
+	BinaCPP_websocket::enter_event_loop();
 }
 
 
@@ -1364,7 +1359,7 @@ DLLFUNC int BrokerLogin(char* User,char* Pwd,char* Type,char* Account)
 	} else {
 		Log("[DEBUG] ", "BrokerLogin() Out");
 		if (WSRecive.joinable()) {
-			flowing = false;
+			BinaCPP_websocket::stop_websocket_service();
 			WSRecive.join();
 		}
 

@@ -2,9 +2,11 @@
 
 #include "binacpp_websocket.h"
 #include "binacpp_logger.h"
+#include <atomic>
 
 string binanceWsHost = BINANCE_FUTURES_USDT_WS_HOST;
 int binanceWsPort = BINANCE_FUTURES_USDT_WS_PORT;
+std::atomic_bool flowing{ false };
 
 struct lws_context *BinaCPP_websocket::context = NULL;
 struct lws_protocols BinaCPP_websocket::protocols[] =
@@ -122,15 +124,15 @@ BinaCPP_websocket::connect_endpoint (
 
 }
 
-
 //----------------------------
 // Entering event loop
 void 
-BinaCPP_websocket::enter_event_loop(std::atomic_bool &flowing)
+BinaCPP_websocket::enter_event_loop()
 {
+	flowing = true;
 	while(flowing)
 	{	
-		try {	
+		try {
 			lws_service( context, 500 );
 		} catch ( exception &e ) {
 		 	BinaCPP_logger::write_log( "<BinaCPP_websocket::enter_event_loop> Error ! %s", e.what() ); 
@@ -140,4 +142,10 @@ BinaCPP_websocket::enter_event_loop(std::atomic_bool &flowing)
 	lws_context_destroy( context );
 }
 
+
+void 
+BinaCPP_websocket::stop_websocket_service() {
+	flowing = false;
+	lws_cancel_service(context);
+}
 

@@ -45,5 +45,6 @@ class BinaCPP_websocket {
 			const char* path
 		);
 		static void init();
-		static void enter_event_loop(std::atomic_bool &flowing);
+		static void enter_event_loop();
+		static void stop_websocket_service();
 };
