@@ -4,7 +4,7 @@
 
 ## Install
 
-To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.2.1/BinanceFuturesPlugin_v0.2.1.zip) and place **BinanceFutures.dll** and **cacert.pem** into the **Plugin** folder under Zorro's root path.
+To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.2.2/BinanceFuturesPlugin_v0.2.2.zip) and place **BinanceFutures.dll** and **cacert.pem** into the **Plugin** folder under Zorro's root path.
 
 ## How to Use
 * First generate a API Key in Binance website.
