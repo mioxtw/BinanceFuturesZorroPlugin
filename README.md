@@ -98,6 +98,9 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * ENABLE_SPOTPRICE (private API)
       * Enable Binance SPOT price ticks, volume, and history downloading instead of Binance Futures
       * Currenly it only supports for Binance Futures USDT
+      ``` C++  
+      brokerCommand(ENABLE_SPOTPRICE, 1);
+      ```
 
 ## TO-DO List
   * Please report bugs to fix.
