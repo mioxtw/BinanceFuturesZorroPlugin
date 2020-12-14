@@ -91,7 +91,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
       #define SET_TGCHATID           2002
       #define ENABLE_TESTNET         2003
       #define SET_TRADEVOLINTERVAL   2004
-      #define ENABLE_SPOTTICKS       2005
+      #define ENABLE_SPOTPRICE       2005
       
       brokerCommand(SET_TRADEVOLINTERVAL, BarPeriod);
       ```
