@@ -37,7 +37,6 @@ typedef double DATE;
 #include "binacpp_websocket.h"
 #include <json/json.h>
 #include <thread>
-#include <mutex>
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
 
@@ -110,7 +109,6 @@ static double g_Balance = -1;
 static double g_TradeVal = -1;
 static double g_MarginVal = -1;
 static bool g_enableSpotTicks = false;
-std::mutex mtx;
 
 #define OBJECTS	300
 #define TOKENS		20+OBJECTS*32
@@ -546,15 +544,8 @@ void ws_ticks() {
 	std::string secret_key(g_Secret);
 	BinaCPP::init(api_key, secret_key);
 
-
-
 	//waitForAccount();
 	waitForAsset();
-
-	if (mtx.try_lock()) {
-		hedge = BinaCPP::get_dualSidePosition(get_host(g_Asset));
-		mtx.unlock();
-	}
 
 	//Json::Value result;
 	//BinaCPP::start_userDataStream(result);
@@ -564,7 +555,9 @@ void ws_ticks() {
 	
 
 	char msgbuf[256];
-	sprintf(msgbuf, "/ws/%s@aggTrade", strlwr(g_Asset));
+	char asset[100];
+	strcpy_s(asset, g_Asset);
+	sprintf(msgbuf, "/ws/%s@aggTrade", strlwr(asset));
 	//sprintf(msgbuf, "/ws/ethusdt@aggTrade");
 	Log("Mio: ws_ticks", msgbuf);
 
@@ -670,6 +663,7 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 	if (pdTradeVal) *pdTradeVal = TradeVal;
 	if (pdMarginVal) *pdMarginVal = MarginVal;
 
+	hedge = BinaCPP::get_dualSidePosition(get_host(g_Asset));  
 
 	return Balance > 0. ? 1 : 0;
 
@@ -698,17 +692,11 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 
 		if (pPrice) {
 			if (g_enableSpotTicks) {
-				if (mtx.try_lock()) {
-					std::string host(BINANCE_SPOT_HOST);
-					*pPrice = BinaCPP::get_price(host, g_Asset);
-					mtx.unlock();
-				}
+				std::string host(BINANCE_SPOT_HOST);
+				*pPrice = BinaCPP::get_price(host, g_Asset);
 			}
 			else {
-				if (mtx.try_lock()) {
-					*pPrice = BinaCPP::get_price(get_host(g_Asset), g_Asset);
-					mtx.unlock();
-				}
+				*pPrice = BinaCPP::get_price(get_host(g_Asset), g_Asset);
 		    }
 		}
 
@@ -718,17 +706,11 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 	if (pVolume) {
 		char* tf = timeFrame(g_tradeVolumeInterval);
 		if (g_enableSpotTicks) {
-			if (mtx.try_lock()) {
-				std::string host(BINANCE_SPOT_HOST);
-				*pVolume = BinaCPP::get_volume(host, g_Asset, tf);
-				mtx.unlock();
-			}
+			std::string host(BINANCE_SPOT_HOST);
+			*pVolume = BinaCPP::get_volume(host, g_Asset, tf);
 		}
 		else {
-			if (mtx.try_lock()) {
-				*pVolume = BinaCPP::get_volume(get_host(g_Asset), g_Asset, tf);
-				mtx.unlock();
-			}
+			*pVolume = BinaCPP::get_volume(get_host(g_Asset), g_Asset, tf);
 		}
 
 		Log("Mio: volume: ", ftoa(*pVolume));
@@ -1353,7 +1335,6 @@ DLLFUNC int BrokerLogin(char* User,char* Pwd,char* Type,char* Account)
 			//Log("Mio: not joinable", g_Asset);
 			WSRecive = thread(&ws_ticks);
 		}
-
 
 		return 1;
 	} else {

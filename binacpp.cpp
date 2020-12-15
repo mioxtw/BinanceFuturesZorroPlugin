@@ -2031,7 +2031,7 @@ BinaCPP::curl_api_with_header( string &url, string &str_result, vector <string> 
 		curl_easy_setopt(BinaCPP::curl, CURLOPT_WRITEFUNCTION, BinaCPP::curl_cb);
 		curl_easy_setopt(BinaCPP::curl, CURLOPT_WRITEDATA, &str_result );
 		curl_easy_setopt(BinaCPP::curl, CURLOPT_SSL_VERIFYPEER, false);
-		//curl_easy_setopt(BinaCPP::curl, CURLOPT_ENCODING, "gzip");
+		curl_easy_setopt(BinaCPP::curl, CURLOPT_ENCODING, "gzip");
 
 
 
