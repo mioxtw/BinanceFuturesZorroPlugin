@@ -37,6 +37,7 @@ typedef double DATE;
 #include "binacpp_websocket.h"
 #include <json/json.h>
 #include <thread>
+#include <atomic>
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
 
@@ -109,6 +110,7 @@ static double g_Balance = -1;
 static double g_TradeVal = -1;
 static double g_MarginVal = -1;
 static bool g_enableSpotTicks = false;
+atomic_int g_tickCount {0};
 
 #define OBJECTS	300
 #define TOKENS		20+OBJECTS*32
@@ -415,6 +417,7 @@ int ws_aggTrade_OnData(Json::Value& json_result) {
 	aggTradeCache[aggTradeId]["p"] = atof(json_result["p"].asString().c_str());
 	aggTradeCache[aggTradeId]["q"] = atof(json_result["q"].asString().c_str());
 
+	g_tickCount++;
 	//Log("ws_aggTrade_OnData(): [SET] Tick ID:", ltoa(aggTradeId));
 
 	//cout << "Mio0: aggTradeId: " << aggTradeId << endl;
@@ -682,6 +685,9 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 	if (WSRecive.joinable() && aggTradeCache[aggTradeId]["p"] != 0.0) {
 		//Log("BrokerAsset(): [GET] Tick ID:", ltoa(aggTradeId));
 	    if (pPrice) *pPrice = aggTradeCache[aggTradeId]["p"];
+		if (g_tickCount > 1)
+			Log("Mio: ","Price ticks loss");
+		g_tickCount = 0;
 	}
 	else {
 
