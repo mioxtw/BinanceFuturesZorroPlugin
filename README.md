@@ -4,7 +4,7 @@
 
 ## Install
 
-To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.2.1/BinanceFuturesPlugin_v0.2.1.zip) and place **BinanceFutures.dll** and **cacert.pem** into the **Plugin** folder under Zorro's root path.
+To install the plugin, download the [latest release](https://github.com/mioxtw/BinanceFuturesZorroPlugin/releases/download/v0.2.2/BinanceFuturesPlugin_v0.2.2.zip) and place **BinanceFutures.dll** and **cacert.pem** into the **Plugin** folder under Zorro's root path.
 
 ## How to Use
 * First generate a API Key in Binance website.
@@ -39,7 +39,7 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
     * If you forget to fill account value in accounts.csv, it uses Asset to know what account balance.
   * BrokerAsset
     * Only Support traded price and traded volume.
-    * Add websocket streaming support to lower number of API requests and support high resolution ticks.
+    * Add websocket streaming support to lower number of API requests and support high resolution ticks.(Thanks for AndrewAMD's help)
     * Traded volume use 1 minute timeframe defaultly. So it needs to set BarPeriod from BrokerCommand.
       ``` C++
       #define SET_TRADEVOLINTERVAL   2004
