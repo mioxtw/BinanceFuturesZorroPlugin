@@ -681,7 +681,7 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 			DEBUG("Mio: Error: ", error);
 
 
-			if (errorNo = -1003) {
+			if (errorNo == -1003) {
 				time(&limitTime);
 				limitTime += RATE_LIMIT_TIME;
 			}
