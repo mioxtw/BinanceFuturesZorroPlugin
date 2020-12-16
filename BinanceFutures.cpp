@@ -1011,6 +1011,7 @@ DLLFUNC int BrokerTrade(int nTradeID,double *pOpen,double *pClose,double *pRoll,
 	strcat_s(Param,"&origClientOrderId=");
 	strcat_s(Param,itoa(nTradeID));
 
+	rateCount++;
 	//weight=1
 	char* Result = send("v1/order",Param,1);
 	if(!Result || !*Result) return 0;
@@ -1024,14 +1025,26 @@ DLLFUNC int BrokerTrade(int nTradeID,double *pOpen,double *pClose,double *pRoll,
 
 
 
-
-
-
 	double currentPrice = 0;
 	BrokerAsset(g_Asset,&currentPrice,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 	if (pClose) *pClose = currentPrice;
 
+	if (pProfit) {
+		if (!strcmp(g_Account,"USDT")) {
+			if (!strcmp(side, "BUY"))
+				*pProfit = (currentPrice - openPrice) * executedQty;
+			else if (!strcmp(side, "SELL"))
+				*pProfit = (openPrice - currentPrice) * executedQty;
+		}
+		else {
+			if (!strcmp(side, "BUY"))
+				*pProfit = currentPrice/((currentPrice - openPrice) * executedQty);
+			else if (!strcmp(side, "SELL"))
+				*pProfit = currentPrice/((openPrice - currentPrice) * executedQty);
+		}
+	}
 
+#if 0
 	if (pProfit) {
 		//weught = 1
 		char* Result2 = (strstr(g_Asset, "USDT")) ? send("v2/positionRisk", 0, 1) : send("v1/positionRisk", 0, 1);
@@ -1047,48 +1060,8 @@ DLLFUNC int BrokerTrade(int nTradeID,double *pOpen,double *pClose,double *pRoll,
 			}
 		}
 	}
+#endif
 
-/*	
-	if (pProfit) {
-		if (strstr(g_Asset, "USDT")) {
-			if (!strcmp(side, "BUY"))
-				*pProfit = (currentPrice - openPrice) * executedQty;
-			else if (!strcmp(side, "SELL"))
-				*pProfit = (openPrice - currentPrice) * executedQty;
-		}
-		else {
-			char* Result3 = send("v1/account", 0, 1);
-			if (!Result3 || !*Result3) return 0;
-			if (!parse(Result3)) return 0;
-			while (1) {
-				char* Found = parse(NULL, "symbol");
-				if (!Found || !*Found) break;
-				if (!strcmp(Found, g_Asset)) {
-					*pProfit = atof(parse(NULL, "unrealizedProfit"));
-				}
-			}
-		}
-
-	}
-	*/
-/*
-	if (pProfit) {
-		if (!strcmp(g_Account,"USDT")) {
-			if (!strcmp(side, "BUY"))
-				*pProfit = (currentPrice - openPrice) * executedQty;
-			else if (!strcmp(side, "SELL"))
-				*pProfit = (openPrice - currentPrice) * executedQty;
-		}
-		else {
-			if (!strcmp(side, "BUY"))
-				*pProfit = currentPrice/((currentPrice - openPrice) * executedQty);
-			else if (!strcmp(side, "SELL"))
-				*pProfit = currentPrice/((openPrice - currentPrice) * executedQty);
-		}
-
-
-	}
-*/
 
 
 
