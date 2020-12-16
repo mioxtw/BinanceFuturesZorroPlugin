@@ -1,4 +1,4 @@
-
+﻿
 
 /*
 	Author: tensaix2j
@@ -14,11 +14,18 @@
 #include "binacpp.h"
 #include "binacpp_logger.h"
 #include "binacpp_utils.h"
+#include <debugapi.h>
 
 string BinaCPP::api_key = "";
 string BinaCPP::secret_key = "";
 CURL* BinaCPP::curl = NULL;
 long recvWindow = 50000;
+
+void Log2(char* Name, const char* var) {
+	char msgbuf[1024];
+	sprintf(msgbuf, "%s: %s\n", Name, var);
+	OutputDebugStringA(msgbuf);
+}
 
 //---------------------------------
 void 
@@ -110,7 +117,6 @@ BinaCPP::get_serverTime(string& binanceHost, Json::Value &json_result)
 		BinaCPP_logger::write_log( "<BinaCPP::get_serverTime> Failed to get anything." ) ;
 	}
 }
-
 
 
 //--------------------
@@ -638,6 +644,78 @@ BinaCPP::get_klines(
 
 
 
+
+
+
+void
+BinaCPP::get_balance(string& binanceHost, Json::Value& json_result)
+{
+
+	BinaCPP_logger::write_log("<BinaCPP::get_balance>");
+
+	if (api_key.size() == 0 || secret_key.size() == 0) {
+		BinaCPP_logger::write_log("<BinaCPP::get_balance> API Key and Secret Key has not been set.");
+		return;
+	}
+
+
+	string url(binanceHost);
+	if (binanceHost == BINANCE_SPOT_HOST)
+		return;
+	else if (binanceHost == BINANCE_FUTURES_COIN_HOST)
+		url += "/dapi/v1/balance?";
+	else if (binanceHost == BINANCE_FUTURES_USDT_HOST)
+		url += "/fapi/v2/balance?";
+
+
+	string action = "GET";
+
+
+
+	string querystring("timestamp=");
+	querystring.append(to_string(get_current_ms_epoch()));
+
+	querystring.append("&recvWindow=");
+	querystring.append(to_string(recvWindow));
+
+	string signature = hmac_sha256(secret_key.c_str(), querystring.c_str());
+	querystring.append("&signature=");
+	querystring.append(signature);
+
+	url.append(querystring);
+	vector <string> extra_http_header;
+	string header_chunk("X-MBX-APIKEY: ");
+	header_chunk.append(api_key);
+	extra_http_header.push_back(header_chunk);
+
+	BinaCPP_logger::write_log("<BinaCPP::get_balance> url = |%s|", url.c_str());
+
+	string post_data = "";
+
+	string str_result;
+	curl_api_with_header(url, str_result, extra_http_header, post_data, action);
+
+	if (str_result.size() > 0) {
+
+		try {
+			Json::Reader reader;
+			json_result.clear();
+			reader.parse(str_result, json_result);
+
+		}
+		catch (exception& e) {
+			BinaCPP_logger::write_log("<BinaCPP::get_balance> Error ! %s", e.what());
+		}
+		BinaCPP_logger::write_log("<BinaCPP::get_balance> Done.");
+
+	}
+	else {
+		BinaCPP_logger::write_log("<BinaCPP::get_balance> Failed to get anything.");
+	}
+
+	BinaCPP_logger::write_log("<BinaCPP::get_balance> Done.\n");
+
+}
 
 
 

@@ -40,6 +40,7 @@ typedef double DATE;
 #include <atomic>
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
+#define RATE_LIMIT_TIME 10
 
 
 
@@ -111,6 +112,9 @@ static double g_TradeVal = -1;
 static double g_MarginVal = -1;
 static bool g_enableSpotTicks = false;
 atomic_int g_tickCount {0};
+atomic_int rateCount{ 0 };
+static time_t limitTime;
+
 
 #define OBJECTS	300
 #define TOKENS		20+OBJECTS*32
@@ -128,7 +132,7 @@ void showError(const char* text, const char *detail)
 	BrokerError(msg);
 	}*/
 }
-void Log(char* Name, char *var) {
+void Log(char* Name, const char *var) {
 	char msgbuf[1024];
 	sprintf(msgbuf, "%s: %s\n", Name, var);
 	OutputDebugStringA(msgbuf);
@@ -531,7 +535,7 @@ int ws_userStream_OnData_USDT(Json::Value& json_result) {
 
 
 		g_Balance = userBalance[g_Account]["wb"];
-		g_TradeVal = tradeVal;
+		g_TradeVal = tradeVal; //only for 逐倉
 
 
 		//print_userBalance_usdt();
@@ -644,14 +648,63 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 
 	strcpy_s(g_Account, Account); // for BrokerAccount
 
+
+	double Balance = 0;
+
+	rateCount++;
+	time_t currentTime;
+	time(&currentTime);
+	if (currentTime > limitTime) {
+		Json::Value result;
+		BinaCPP::get_balance(get_host(g_Asset), result);
+
+
+		if (result.isArray()) {
+			if (!result[0]["balance"].isNull()) {
+				Balance = atof(result[0]["balance"].asString().c_str());
+				double TradeVal = atof(result[0]["crossUnPnL"].asString().c_str());
+				double availableBalance = atof(result[0]["availableBalance"].asString().c_str());
+				double MarginVal = Balance - (availableBalance - TradeVal);
+
+				if (pdBalance) *pdBalance = Balance;
+				if (pdTradeVal) *pdTradeVal = TradeVal;
+				if (pdMarginVal) *pdMarginVal = MarginVal;
+			}
+		}
+		else if (!result["code"].isNull()) {
+			int errorNo = result["code"].asInt();
+			std::string errorMessage = result["msg"].asString();
+
+			char error[256];
+			sprintf(error, "[%s] %s", itoa(errorNo), errorMessage.c_str());
+			Log("Mio: Error: ", error);
+			DEBUG("Mio: Error: ", error);
+
+
+			if (errorNo = -1003) {
+				time(&limitTime);
+				limitTime += RATE_LIMIT_TIME;
+			}
+		}
+	}
+	else {
+		char msg[256];
+		sprintf(msg,"Please wait for %d seconds", RATE_LIMIT_TIME);
+		Log("Error: ", "Zorro Binance Futures Plugin skip HTTP request");
+		Log("Error: ", msg);
+		DEBUG("Error: ", msg);
+	}
+
+
+
+#if 0
+	rateCount++;
 	//weight=1
 	char* Response = (!strcmp(Account, "USDT")) ? send("v2/balance", 0, 1) : send("v1/balance", 0, 1);
 	if (!Response) return 0;
 	parse(Response);
-	double Balance = 0;
-	double TradeVal = 0;
-	double MarginVal = 0;
 
+	Log("Mio: BrokerAccount:\n", Response);
 	while (1) {
 		char* Found = parse(NULL, "asset");
 		if (!Found || !*Found) break;
@@ -661,12 +714,7 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 			MarginVal = Balance - (atof(parse(NULL, "availableBalance")) - TradeVal); // 維持保證金 = margin
 		}
 	}
-
-	if (pdBalance) *pdBalance = Balance;
-	if (pdTradeVal) *pdTradeVal = TradeVal;
-	if (pdMarginVal) *pdMarginVal = MarginVal;
-
-	hedge = BinaCPP::get_dualSidePosition(get_host(g_Asset));  
+#endif
 
 	return Balance > 0. ? 1 : 0;
 
@@ -697,6 +745,8 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 		//Log("Wait: ", i64toa(std::chrono::duration_cast<std::chrono::milliseconds>(time).count()));
 
 		if (pPrice) {
+			//weight=1
+			rateCount++;
 			if (g_enableSpotTicks) {
 				std::string host(BINANCE_SPOT_HOST);
 				*pPrice = BinaCPP::get_price(host, g_Asset);
@@ -710,6 +760,8 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 	}
 
 	if (pVolume) {
+		//weight=1
+		rateCount++;
 		char* tf = timeFrame(g_tradeVolumeInterval);
 		if (g_enableSpotTicks) {
 			std::string host(BINANCE_SPOT_HOST);
@@ -719,7 +771,17 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 			*pVolume = BinaCPP::get_volume(get_host(g_Asset), g_Asset, tf);
 		}
 
-		Log("Mio: volume: ", ftoa(*pVolume));
+
+#if 1
+		//put here for the moment
+		//Check hedge status
+		//weight=5 
+		rateCount = rateCount + 5;
+		hedge = BinaCPP::get_dualSidePosition(get_host(g_Asset));
+#endif
+
+		Log("Mio: rateLimitCount: ", itoa(rateCount));
+		rateCount = 0;
 	}
 
 
@@ -880,6 +942,8 @@ DLLFUNC int BrokerHistory2(char* Asset,DATE tStart,DATE tEnd,int nTickMinutes,in
 		strcat_s(Command, i64toa(TTEnd));
 
 		char* Result;
+
+		rateCount++;
 		//weight=1
 		if (g_enableSpotTicks)
 			Result = send("v3/klines", Command, 0, "https://api.binance.com/api/");

@@ -26,11 +26,6 @@
 #include <curl/curl.h>
 #include <json/json.h>
 
-
-#include <mutex>
-
-
-
 #define BINANCE_SPOT_HOST "https://api.binance.com"
 #define BINANCE_FUTURES_USDT_HOST "https://fapi.binance.com"
 #define BINANCE_FUTURES_COIN_HOST "https://dapi.binance.com"
@@ -42,9 +37,7 @@ class BinaCPP {
 	static std::string api_key;
 	static std::string secret_key;
 	static CURL* curl;
-	static std::mutex mtx;
 
-	
 
 	public:
 
@@ -76,6 +69,8 @@ class BinaCPP {
 
 
 		// API + Secret keys required
+
+		static void get_balance(std::string& binanceHost, Json::Value& json_result);
 		static void get_account(std::string& binanceHost, Json::Value &json_result );
 		
 		static void get_myTrades( 
