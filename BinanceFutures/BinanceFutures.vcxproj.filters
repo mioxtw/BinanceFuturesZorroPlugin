@@ -86,9 +86,6 @@
     <ClCompile Include="..\binacpp_websocket.cpp">
       <Filter>原始程式檔</Filter>
     </ClCompile>
-    <ClCompile Include="..\jsoncpp.cpp">
-      <Filter>原始程式檔</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BinanceFutures.rc">
