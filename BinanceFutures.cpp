@@ -41,6 +41,9 @@ typedef double DATE;
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
 #define RATE_LIMIT_TIME 10
+#define RATE_LIMIT_TIME_BROKER_ACCOUNT 1
+#define RATE_LIMIT_TIME_BROKER_TRADE 1
+#define RATE_LIMIT_TIME_BROKER_ASSET 1
 
 
 
@@ -113,7 +116,18 @@ static double g_MarginVal = -1;
 static bool g_enableSpotTicks = false;
 atomic_int g_tickCount {0};
 atomic_int rateCount{ 0 };
-static time_t limitTime;
+static time_t limitTime=0;
+static time_t brokerAccountLimitTime=0;
+static time_t brokerTradeLimitTime=0;
+static time_t brokerAssetLimitTime=0;
+static double last_balance;
+static double last_tradeVal;
+static double last_marginVal;
+static double last_fill;
+static double last_open;
+static double last_close;
+static double last_profit;
+static double last_price;
 
 
 #define OBJECTS	300
@@ -649,42 +663,44 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 	strcpy_s(g_Account, Account); // for BrokerAccount
 
 
-	double Balance = 0;
-
-	rateCount++;
 	time_t currentTime;
 	time(&currentTime);
 	if (currentTime > limitTime) {
-		Json::Value result;
-		BinaCPP::get_balance(get_host(g_Asset), result);
+		if (currentTime > brokerAccountLimitTime) {
+			rateCount++;
+			Json::Value result;
+			BinaCPP::get_balance(get_host(g_Asset), result);
+			if (result.isArray()) {
+				if (!result[0]["balance"].isNull()) {
+					double Balance = atof(result[0]["balance"].asString().c_str());
+					double TradeVal = atof(result[0]["crossUnPnL"].asString().c_str());
+					double availableBalance = atof(result[0]["availableBalance"].asString().c_str());
+					double MarginVal = Balance - (availableBalance - TradeVal);
 
+					last_balance = Balance;
+					last_tradeVal = TradeVal;
+					last_marginVal = MarginVal;
 
-		if (result.isArray()) {
-			if (!result[0]["balance"].isNull()) {
-				Balance = atof(result[0]["balance"].asString().c_str());
-				double TradeVal = atof(result[0]["crossUnPnL"].asString().c_str());
-				double availableBalance = atof(result[0]["availableBalance"].asString().c_str());
-				double MarginVal = Balance - (availableBalance - TradeVal);
-
-				if (pdBalance) *pdBalance = Balance;
-				if (pdTradeVal) *pdTradeVal = TradeVal;
-				if (pdMarginVal) *pdMarginVal = MarginVal;
+				}
 			}
-		}
-		else if (!result["code"].isNull()) {
-			int errorNo = result["code"].asInt();
-			std::string errorMessage = result["msg"].asString();
+			else if (!result["code"].isNull()) {
+				int errorNo = result["code"].asInt();
+				std::string errorMessage = result["msg"].asString();
 
-			char error[256];
-			sprintf(error, "[%s] %s", itoa(errorNo), errorMessage.c_str());
-			Log("Mio: Error: ", error);
-			DEBUG("Mio: Error: ", error);
+				char error[256];
+				sprintf(error, "[%s] %s", itoa(errorNo), errorMessage.c_str());
+				Log("Mio: Error: ", error);
+				DEBUG("Mio: Error: ", error);
 
 
-			if (errorNo == -1003) {
-				time(&limitTime);
-				limitTime += RATE_LIMIT_TIME;
+				if (errorNo == -1003) {
+					time(&limitTime);
+					limitTime += RATE_LIMIT_TIME;
+				}
 			}
+
+			time(&brokerAccountLimitTime);
+			brokerAccountLimitTime += RATE_LIMIT_TIME_BROKER_ACCOUNT;
 		}
 	}
 	else {
@@ -716,7 +732,14 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 	}
 #endif
 
-	return Balance > 0. ? 1 : 0;
+
+
+	if (pdBalance) *pdBalance = last_balance;
+	if (pdTradeVal) *pdTradeVal = last_tradeVal;
+	if (pdMarginVal) *pdMarginVal = last_marginVal;
+
+
+	return last_balance > 0. ? 1 : 0;
 
 }
 
@@ -749,14 +772,12 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 			rateCount++;
 			if (g_enableSpotTicks) {
 				std::string host(BINANCE_SPOT_HOST);
-				*pPrice = BinaCPP::get_price(host, g_Asset);
+				if (pPrice) *pPrice = BinaCPP::get_price(host, g_Asset);
 			}
 			else {
-				*pPrice = BinaCPP::get_price(get_host(g_Asset), g_Asset);
-		    }
+				if (pPrice) *pPrice = BinaCPP::get_price(get_host(g_Asset), g_Asset);
+			}
 		}
-
-
 	}
 
 	if (pVolume) {
@@ -1006,66 +1027,78 @@ DLLFUNC int BrokerTrade(int nTradeID,double *pOpen,double *pClose,double *pRoll,
 	if(!isConnected(1)) return 0;
 
 
-	char Param[512] = "&symbol=";
-	strcat_s(Param,g_Asset);
-	strcat_s(Param,"&origClientOrderId=");
-	strcat_s(Param,itoa(nTradeID));
+	time_t currentTime;
+	time(&currentTime);
+	if (currentTime > brokerTradeLimitTime) {
 
-	rateCount++;
-	//weight=1
-	char* Result = send("v1/order",Param,1);
-	if(!Result || !*Result) return 0;
-	if(!strstr(Result,"clientOrderId")) return 0;
-	if(!parse(Result)) return 0;
-	double openPrice = atof(parse(Result,"avgPrice"));
-	char* side = parse(Result, "side");
-	if(pOpen) *pOpen = openPrice;
-	double executedQty = atof(parse(Result, "executedQty"));
-	int Fill = (int)(executedQty * 1000) / (int)(g_Amount * 1000);
+		char Param[512] = "&symbol=";
+		strcat_s(Param,g_Asset);
+		strcat_s(Param,"&origClientOrderId=");
+		strcat_s(Param,itoa(nTradeID));
+
+		rateCount++;
+		//weight=1
+		char* Result = send("v1/order", Param, 1);
+
+		if (!Result || !*Result) return 0;
+		if (!strstr(Result, "clientOrderId")) return 0;
+		if (!parse(Result)) return 0;
+		double openPrice = atof(parse(Result, "avgPrice"));
+		char* side = parse(Result, "side");
+		last_open = openPrice;
 
 
+		double executedQty = atof(parse(Result, "executedQty"));
+		last_fill = (int)(executedQty * 1000) / (int)(g_Amount * 1000);
 
-	double currentPrice = 0;
-	BrokerAsset(g_Asset,&currentPrice,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
-	if (pClose) *pClose = currentPrice;
-
-	if (pProfit) {
-		if (!strcmp(g_Account,"USDT")) {
-			if (!strcmp(side, "BUY"))
-				*pProfit = (currentPrice - openPrice) * executedQty;
-			else if (!strcmp(side, "SELL"))
-				*pProfit = (openPrice - currentPrice) * executedQty;
+		if (pClose) {
+			double currentPrice = 0;
+			BrokerAsset(g_Asset, &currentPrice, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+			last_close = currentPrice;
 		}
-		else {
-			if (!strcmp(side, "BUY"))
-				*pProfit = currentPrice/((currentPrice - openPrice) * executedQty);
-			else if (!strcmp(side, "SELL"))
-				*pProfit = currentPrice/((openPrice - currentPrice) * executedQty);
-		}
-	}
 
 #if 0
-	if (pProfit) {
-		//weught = 1
-		char* Result2 = (strstr(g_Asset, "USDT")) ? send("v2/positionRisk", 0, 1) : send("v1/positionRisk", 0, 1);
-		//char* Result2 = (strstr(g_Asset, "USDT")) ? send("v2/account", 0, 1) : send("v1/account", 0, 1);
-		if (!Result2 || !*Result2) return 0;
-		if (!parse(Result2)) return 0;
-		while (1) {
-			char* Found = parse(NULL, "symbol");
-			if (!Found || !*Found) break;
-			if (!strcmp(Found, g_Asset)) {
-				*pProfit += atof(parse(NULL, "unRealizedProfit"));   //for v2/positionRisk
-				//*pProfit += atof(parse(NULL, "unrealizedProfit")); //for v2/account
+		if (pProfit) {
+			if (!strcmp(g_Account, "USDT")) {
+				if (!strcmp(side, "BUY"))
+					*pProfit = (currentPrice - openPrice) * executedQty;
+				else if (!strcmp(side, "SELL"))
+					*pProfit = (openPrice - currentPrice) * executedQty;
+			}
+			else {
+				if (!strcmp(side, "BUY"))
+					*pProfit = currentPrice / ((currentPrice - openPrice) * executedQty);
+				else if (!strcmp(side, "SELL"))
+					*pProfit = currentPrice / ((openPrice - currentPrice) * executedQty);
 			}
 		}
-	}
 #endif
+#if 1
+		if (pProfit) {
+			//weught = 1
+			char* Result2 = (strstr(g_Asset, "USDT")) ? send("v2/positionRisk", 0, 1) : send("v1/positionRisk", 0, 1);
+			//char* Result2 = (strstr(g_Asset, "USDT")) ? send("v2/account", 0, 1) : send("v1/account", 0, 1);
+			if (!Result2 || !*Result2) return 0;
+			if (!parse(Result2)) return 0;
+			while (1) {
+				char* Found = parse(NULL, "symbol");
+				if (!Found || !*Found) break;
+				if (!strcmp(Found, g_Asset)) {
+					*pProfit += atof(parse(NULL, "unRealizedProfit"));   //for v2/positionRisk
+					//*pProfit += atof(parse(NULL, "unrealizedProfit")); //for v2/account
+				}
+			}
+		}
+#endif
+		time(&brokerTradeLimitTime);
+		brokerTradeLimitTime += RATE_LIMIT_TIME_BROKER_TRADE;
+	}
 
+	if (pOpen) *pOpen = last_open;
+	if (pClose) *pClose = last_close;
+	if (pProfit) *pProfit = last_profit;
 
-
-
-	return Fill;
+	return last_fill;
 }
 
 DLLFUNC int BrokerBuy2(char* Asset,int Amount,double dStopDist,double Limit,double *pPrice,int *pFill)
