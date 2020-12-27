@@ -23,6 +23,7 @@ typedef double DATE;
 #include "sha256.h"
 #include "base64.h"
 
+
 //#define DEBUG(a,b) 
 #define DEBUG(a,b) showError(a,b);
 #define PLUGIN_VERSION 2
@@ -38,6 +39,8 @@ typedef double DATE;
 #include <json/json.h>
 #include <thread>
 #include <atomic>
+#include <mutex>
+
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
 #define RATE_LIMIT_TIME 10
@@ -133,6 +136,7 @@ static double last_open;
 static double last_close;
 static double last_profit;
 static double last_price;
+static mutex mtx;
 
 
 #define OBJECTS	300
@@ -439,8 +443,10 @@ int ws_aggTrade_OnData(Json::Value& json_result) {
 	if ((!json_result["a"].isNull())) {
 		//long timestamp = json_result["T"].asInt64();
 		aggTradeId = json_result["a"].asInt64();
+		mtx.lock();
 		aggTradeCache[aggTradeId]["p"] = atof(json_result["p"].asString().c_str());
 		aggTradeCache[aggTradeId]["q"] = atof(json_result["q"].asString().c_str());
+		mtx.unlock();
 		g_tickCount++;
 		//Log("ws_aggTrade_OnData(): [SET] Tick ID:", ltoa(aggTradeId));
 
@@ -451,9 +457,18 @@ int ws_aggTrade_OnData(Json::Value& json_result) {
 		//cout << " " << endl;
 		//print_aggTradeCache();
 		//Log("Mio: ws_aggTrade_OnData() ", ftoa(aggTradeCache[aggTradeId]["p"]));
-		PostMessage(g_hWindow, WM_APP + 1, 0, 0);
-		time(&wsPriceTicksTimeOut);
-		wsPriceTicksTimeOut += TIME_OUT_WS_PRICE_TICKS;
+
+
+
+
+		if (aggTradeCache[aggTradeId]["p"] == 0) {
+			Log("Mio: WS Error ", "aggTradeCache == 0");
+		}
+		else {
+			PostMessage(g_hWindow, WM_APP + 1, 0, 0);
+			time(&wsPriceTicksTimeOut);
+			wsPriceTicksTimeOut += TIME_OUT_WS_PRICE_TICKS;
+		}
 	}
 	else if (!json_result["code"].isNull()) {
 
@@ -785,9 +800,11 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 
 	strcpy_s(g_Asset, fixAsset(Asset)); // for BrokerAsset
 
-	if (WSRecive.joinable() && aggTradeCache[aggTradeId]["p"] != 0.0) {
+	mtx.lock();
+	double aggPrice = aggTradeCache[aggTradeId]["p"];
+	mtx.unlock();
 
-
+	if (WSRecive.joinable() && aggPrice != 0.0) {
 		time_t currentTime;
         time(&currentTime);
 		if (currentTime > wsPriceTicksTimeOut && wsPriceTicksTimeOut) {
@@ -803,7 +820,7 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 		}
 
 		//Log("BrokerAsset(): [GET] Tick ID:", ltoa(aggTradeId));
-		if (pPrice) *pPrice = aggTradeCache[aggTradeId]["p"];
+		if (pPrice) *pPrice = aggPrice;
 		if (g_tickCount > 1)
 			Log("Mio: ", "Price ticks loss");
 		//if (g_tickCount == 0)
@@ -819,7 +836,7 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 		//Log("Wait: ", i64toa(std::chrono::duration_cast<std::chrono::milliseconds>(time).count()));
 
 		if (pPrice) {
-			Log("Mio: REST Price: last WS price", ftoa(aggTradeCache[aggTradeId]["p"]));
+			Log("Mio: REST Price: last WS price", ftoa(aggPrice));
 			//weight=1
 			rateCountAsset++;
 			if (g_enableSpotTicks) {
@@ -831,6 +848,7 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 			}
 		}
 	}
+
 
 	if (pVolume) {
 		//weight=1
