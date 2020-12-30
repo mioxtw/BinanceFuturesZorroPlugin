@@ -39,7 +39,8 @@ typedef double DATE;
 #include <json/json.h>
 #include <thread>
 #include <atomic>
-#include <mutex>
+//#include <mutex>
+#include <shared_mutex>
 
 #define API_KEY 		"api key"
 #define SECRET_KEY		"user key"
@@ -66,7 +67,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 }
 
 /////////////////////////////////////////////////////////////
-const char* NAME = "Binance Futures";
+const char* NAME = "Binance Futures v0.3.0";
 
 const char* TOKERR = "error";
 
@@ -136,7 +137,9 @@ static double last_open;
 static double last_close;
 static double last_profit;
 static double last_price;
-static mutex mtx;
+//static mutex mtx;
+static std::shared_mutex g_mutex;
+static double g_dPrice;
 
 
 #define OBJECTS	300
@@ -435,7 +438,18 @@ char* timeFrame(int interval) {
 	return tf;
 }
 
+void setPrice(double price) {
+	std::unique_lock<std::shared_mutex> wLock(g_mutex);
+	//aggTradeCache[aggTradeId]["p"] = price;
+	//aggTradeCache[aggTradeId]["q"] = aggQty;
+	g_dPrice = price;
+}
 
+double getPrice() {
+	std::shared_lock<std::shared_mutex> rLock(g_mutex);
+	//return aggTradeCache[aggTradeId]["p"];
+	return g_dPrice;
+}
 
 int ws_aggTrade_OnData(Json::Value& json_result) {
 
@@ -443,10 +457,12 @@ int ws_aggTrade_OnData(Json::Value& json_result) {
 	if ((!json_result["a"].isNull())) {
 		//long timestamp = json_result["T"].asInt64();
 		aggTradeId = json_result["a"].asInt64();
-		mtx.lock();
-		aggTradeCache[aggTradeId]["p"] = atof(json_result["p"].asString().c_str());
-		aggTradeCache[aggTradeId]["q"] = atof(json_result["q"].asString().c_str());
-		mtx.unlock();
+		double aggPrice = atof(json_result["p"].asString().c_str());
+		double aggQty = atof(json_result["q"].asString().c_str());
+
+		setPrice(aggPrice);
+
+
 		g_tickCount++;
 		//Log("ws_aggTrade_OnData(): [SET] Tick ID:", ltoa(aggTradeId));
 
@@ -461,7 +477,7 @@ int ws_aggTrade_OnData(Json::Value& json_result) {
 
 
 
-		if (aggTradeCache[aggTradeId]["p"] == 0) {
+		if (aggPrice == 0) {
 			Log("Mio: WS Error ", "aggTradeCache == 0");
 		}
 		else {
@@ -742,8 +758,8 @@ DLLFUNC int BrokerAccount(char* Account, double* pdBalance, double* pdTradeVal, 
 			else {
 				Json::FastWriter writer;
 				std::string strWrite = writer.write(result);
-				Log("Mio: WS Error: ", strWrite.c_str());
-				//DEBUG("Mio: WS Error: ", strWrite.c_str());
+				Log("Mio: Error: ", strWrite.c_str());
+				//DEBUG("Mio: Error: ", strWrite.c_str());
 			}
 
 			time(&brokerAccountLimitTime);
@@ -800,10 +816,8 @@ DLLFUNC int BrokerAsset(char* Asset,double* pPrice,double* pSpread,
 
 	strcpy_s(g_Asset, fixAsset(Asset)); // for BrokerAsset
 
-	mtx.lock();
-	double aggPrice = aggTradeCache[aggTradeId]["p"];
-	mtx.unlock();
-
+	double aggPrice = getPrice();
+	
 	if (WSRecive.joinable() && aggPrice != 0.0) {
 		time_t currentTime;
         time(&currentTime);

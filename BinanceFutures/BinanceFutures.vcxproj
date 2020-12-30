@@ -102,7 +102,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>C:\OpenSSL-Win32\include;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\OpenSSL-Win32\lib;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\OpenSSL-Win32\lib;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib\debug;$(LibraryPath)</LibraryPath>
+    <OutDir>..\..\ZorroBeta2.34.3\Plugin</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -110,7 +111,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>C:\OpenSSL-Win32\include;C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib;C:\OpenSSL-Win32\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\Users\Mio\Desktop\BinanceFuturesZorroPlugin\lib\release;C:\OpenSSL-Win32\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -127,7 +128,11 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>libcurl.lib;ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;websockets_static.lib;ssleay32.lib;libeay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurld.lib;ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;websockets_static.lib;ssleay32.lib;libeay32.lib;jsoncpp_static.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <StackReserveSize>
+      </StackReserveSize>
+      <StackCommitSize>
+      </StackCommitSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -159,7 +164,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>libcurl.lib;ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;websockets_static.lib;ssleay32.lib;libeay32.lib;zlibstat.lib;jsoncpp_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcurl.lib;ws2_32.lib;winmm.lib;wldap32.lib;crypt32.lib;websockets_static.lib;ssleay32.lib;libeay32.lib;jsoncpp_static.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
