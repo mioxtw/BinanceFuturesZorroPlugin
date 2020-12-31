@@ -12,9 +12,9 @@ To install the plugin, download the [latest release](https://github.com/mioxtw/B
 
 |Name|Broker|Account|User|Pass|Assets|CCY|Real|NFA|Plugin|Source|
 |----|----|----|----|----|----|----|----|----|----|----|
-|BinanceFuturesUSDT|Binance Futures	USDT|USDT|---|---|AssetsBinacneFutures|USDT|1|1|	BinanceFutures|
-|BinanceFuturesCoin1|Binance Futures BTC|BTC|---|---|AssetsBinacneFutures|BTC|1|1|	BinanceFutures|
-|BinanceFuturesCoin2|Binance Futures ETH|ETH|---|---|AssetsBinacneFutures|ETH|1|1|	BinanceFutures|
+|BinanceFuturesUSDT|Binance Futures	USDT|USDT|---|---|AssetsBinanceFutures|USDT|1|1|	BinanceFutures|
+|BinanceFuturesCoin1|Binance Futures BTC|BTC|---|---|AssetsBinanceFutures|BTC|1|1|	BinanceFutures|
+|BinanceFuturesCoin2|Binance Futures ETH|ETH|---|---|AssetsBinanceFutures|ETH|1|1|	BinanceFutures|
 
 * Create AssetsBinacneFutures.csv (Binance does not use PIP/PIPCost, but we have to use a mapping value to calculate profit and equity. I'm still testing)
 
