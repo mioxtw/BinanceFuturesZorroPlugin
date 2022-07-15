@@ -1,6 +1,6 @@
 # BinanceFuturesZorroPlugin
 
-**BinanceFuturesZorroPlugin** is a plugin for **[Zorro](https://zorro-project.com/)**, an institutional-grade development tool fro financial research and automatic traiding system.
+**BinanceFuturesZorroPlugin** is a plugin for **[Zorro](https://zorro-project.com/)**, an institutional-grade development tool for financial research and automatic trading system.
 
 ## Install
 
